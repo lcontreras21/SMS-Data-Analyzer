@@ -29,10 +29,17 @@ class person:
         self.type_no = type_no
         self.sms_list = [] 
 
-    def add_sms(sms):
+    def add_sms(self, sms):
         self.sms_list.append(sms)
 
-    def __str__():
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.type_no == other.type_no
+    
+    def __lt__(self, other):
+        return self.type_no < other.type_no
+
+    def __str__(self):
         return "Person "+ str(self.type_no)
 
 class msg:
@@ -42,35 +49,31 @@ class msg:
         self.date = date
         self.readable_date = readable_date
     
-    def __str__():
+    def __str__(self):
         return str(self.text) + " " + str(self.readable_date)
 
-# Helper function to find current person of sms if not new
-def find_person(type_no, people):
-    for person in people:
-        if person.type_no == type_no:
-            return person
-
 def create_people(sms_data):
-    # Go through each sms one by one, create people if not created and add to their sms_list if they are created
+    # create the people found in the text messages
     people = []
-    for sms in sms_data:
-        new_person = person(sms.getAttribute("type"))
-        if new_person not in people:
-            people.append(new_person)
-        else:
-            new_person = find_person(sms.getAttribute("type"), people)
-        
-        current_sms = msg(sms.getAttribute("body"), sms.getAttribute("date"), sms.getAttribute("readable_date"))
-        print(current_sms)
-        new_person.add_sms(current_sms)
+    types = []
+    for msg in sms_data:
+        if msg.getAttribute("type") not in types:
+            types.append(msg.getAttribute("type"))
+    for type_x in types:
+        new_person = person(type_x)
+        people.append(new_person)
     return people
 
+def add_messages(people, sms_data):
+    # go through each sms and add the text to the appropriate person
+    people = people.sort()
+    
 def main():
     print("Loading XML file", flush=True)
     sms_data = process()
     people = create_people(sms_data)
-    print(people[0].sms_list)
+    for person_x in people.sort():
+        print(person_x)
 
 if __name__ == "__main__":
     main()

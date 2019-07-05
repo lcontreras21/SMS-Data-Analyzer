@@ -14,7 +14,7 @@ from xml.dom.minidom import parse
 import xml.dom.minidom
 
 #This function will handle the reading in and stripping of xml stuff
-def process():
+def pre_process():
    # Open XML doc using minidom parser
    DOMTree = xml.dom.minidom.parse("sms_data.xml")
    collection = DOMTree.documentElement
@@ -68,12 +68,21 @@ def add_messages(people, sms_data):
     # go through each sms and add the text to the appropriate person
     people = people.sort()
     
-def main():
+def process():
     print("Loading XML file", flush=True)
-    sms_data = process()
+    sms_data = pre_process()
     people = create_people(sms_data)
     for person_x in people.sort():
         print(person_x)
+    return people
+    # now each person has its own messages related to it
+    # in the form of a list of sms class types
+    
+    # TODO create statistics based on those messages
+    # TODO create plots and graphs based on those statistics
+    # TODO create language model based on each person, based on CS 208 lab
+        # dont have the code for that though at the moment, but I can recall it
+
 
 if __name__ == "__main__":
-    main()
+    process()

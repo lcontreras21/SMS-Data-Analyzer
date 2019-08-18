@@ -29,18 +29,16 @@ def preprocess_xml(xml_file):
 	with open(xml_file[:-4] + "_processed.xml", "w") as new_file:
 		with open(xml_file, "r") as old_file:
 			for line in old_file:
-				matches = re.findall(r"&#[0-9]*;", line)
+				matches = re.findall(r"&#[0-9]{6};", line)
+				hex_matches = [hex(int(i[2:-1])) for i in matches]
 
-				matches = [i for i in matches if len(i) > 5]
-
-				old_string = "".join(matches)
 				if len(matches) != 0:
-					matches = [matches[i] + matches[i+1] for i in range(0, len(matches), 2)]
-					matches = [convert_to_hex(i) for i in matches]
+					# the xml data is different now, emojis are in decimal instead of utf 16. Much easier
+					#matches = [matches[i] + matches[i+1] for i in range(0, len(matches), 2)]
+					#matches = [convert_to_hex(i) for i in matches]
 
-					new_string = "".join(matches)
-					line = line.replace(old_string, new_string)
-
+					for i in range(len(matches)):
+						line = line.replace(matches[i], hex_matches[i], 1)
 				new_file.write(line)
 
 if __name__ == "__main__":

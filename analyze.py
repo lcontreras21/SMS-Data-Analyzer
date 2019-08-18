@@ -3,22 +3,21 @@ I will take in all the text messages me and Helena have sent. I will compile sta
 Additionally, I can use the language model I made for 208 to create an LM for me or for her or for both and create something that makes dialogue.
 
 Outline:
-    Read in the xml file containing text.
-    Clean it up to only get the text messages. Contained in <sms protocal... body="messages are here" .../>
-    Messages coming from me have type="2" and from her have ty[e="1"
-
-Not being built to handle emojies, future implementation?
+    Done	Read in the xml file containing text.
+	Done	Process it so the emojis are readable as xml
+    Done	Clean it up to only get the all the sms and mms
+				Messages coming from me have type="2" and from her have type="1"
+				Photos coming from me have msg_box="2" and from her have msg_box="1" 
+				Record all the emojis used in a dictionary to be later looked up online
+	Done	Output messages and photos in order they were sent. Faster than scrolling back in the chat
+	WIP		Make a binary language model for each person
+				Can use that LM to check statistics on words, would be nice to check first usage of X word
 '''
 
 from xml.dom.minidom import parse
 import xml.dom.minidom
 import time
 import re
-
-
-# TODO Figure out how emojis are sent and keep that as a count too, maybe a dict of emoji types and their counts
-
-
 
 #This function will handle the reading in and stripping of xml stuff
 def load_sms_mms_data():
@@ -53,8 +52,9 @@ class Person:
 	
 	def scan_for_emojis(self):
 		self.emojis = {}
-		for sms in self.sms_list:
-			matches = re.findall(r"0x[a-z;0-9]{5}", sms.text)
+		text_data = self.sms_list + self.mms_list
+		for ms in text_data:
+			matches = re.findall(r"0x[a-z;0-9]{5}", ms.text)
 			if len(matches) != 0:
 				for match in matches:
 					if match not in self.emojis:
@@ -67,27 +67,35 @@ class Person:
 	def __str__(self):
 	    return self.type_nos
 
-class Message:
-    def __init__(self, text, date, readable_date):
-        #date in milliseconds Unix time
-        self.text = text
-        self.date = date
-        self.readable_date = readable_date
+class Message:	
+	def __init__(self, type_no, text, date, readable_date):
+		#date in milliseconds Unix time
+		self.type_no = type_no
+		self.text = text
+		self.date = date
+		self.readable_date = readable_date
 
-    def __str__(self):
-        return str(self.text) + " " + str(self.readable_date)
+	def __str__(self):
+		return str(self.text) + " " + str(self.readable_date)
+
+	def __lt__(self, other):
+		return self.date < other.date
 
 class Photo:
-	def __init__(self, text, date, readable_date):
+	def __init__(self, type_no, text, date, readable_date):
+		self.type_no = type_no
 		self.text = text
 		self.date = date
 		self.readable_date = readable_date
 		self.contains_image = False
 		self.photo_count = 0
 
+	def __lt__(self, other):
+		return self.date < other.date
+
 # Returns a dictionary of people associated to their type value.
 # "1" is Helena and "2" is Luis
-def associate_people_to_sms():
+def associate_people():
 	sms_data, mms_data = load_sms_mms_data()
 	people = {}
 
@@ -96,7 +104,7 @@ def associate_people_to_sms():
 		if person_id not in people:
 			people[person_id] = Person(person_id)
 
-		current_sms = Message(sms.getAttribute("body"), sms.getAttribute("data"), sms.getAttribute("readable_data"))
+		current_sms = Message(person_id, sms.getAttribute("body"), sms.getAttribute("date"), sms.getAttribute("readable_date"))
 
 		people[person_id].add_sms(current_sms)
 
@@ -104,7 +112,7 @@ def associate_people_to_sms():
 		mms_id = mms.getAttribute("msg_box")
 		
 		mms_date = mms.getAttribute("date")
-		mms_readable_data = mms.getAttribute("readable_data")
+		mms_readable_data = mms.getAttribute("readable_date")
 		mms_text = ""
 		mms_contains_image = False
 		mms_count = 0
@@ -117,7 +125,7 @@ def associate_people_to_sms():
 			if i.getAttribute("ct") == "text/plain":
 				mms_text = i.getAttribute("text")
 		
-		current_mms = Photo(mms_text, mms_date, mms_readable_data)
+		current_mms = Photo(person_id, mms_text, mms_date, mms_readable_data)
 		current_mms.contains_image = mms_contains_image
 		current_mms.photo_count = mms_count
 		
@@ -126,6 +134,23 @@ def associate_people_to_sms():
 	for person in people:
 		people[person].scan_for_emojis()
 	return people
+
+# sort both the sms lists and the mms lists and make them play back in order
+def chat_history(people):
+	Helena = people["1"]
+	Luis = people["2"]
+	
+	key = {"1": "Helena", "2": "Luis"}
+	
+	history = Helena.sms_list + Luis.sms_list + Helena.mms_list + Luis.mms_list
+	print(len(history))
+	history.sort()
+	
+	with open("chat_history.txt", "w") as f:
+		for i in history:
+			name = key[i.type_no]
+			f.write(name + "\t" + i.readable_date + "\t" + i.text + "\n")
+	return
 	
 
 # TODO create statistics based on those messages
@@ -133,7 +158,7 @@ def associate_people_to_sms():
 
 # TODO create language model based on each person, based on CS 208 lab
 if __name__ == "__main__":
-	people = associate_people_to_sms()
+	people = associate_people()
+	#chat_history(people)
 	Helena = people["1"]
-	Luis = people["2"]
-
+	print(Helena.emojis)

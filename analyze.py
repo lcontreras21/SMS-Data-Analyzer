@@ -11,6 +11,7 @@ Outline:
 				Record all the emojis used in a dictionary to be later looked up online
 	Done	Output messages and photos in order they were sent. Faster than scrolling back in the chat
 	WIP		Make a binary language model for each person
+				Figure out a way to clean the text / if I want toG
 				Can use that LM to check statistics on words, would be nice to check first usage of X word
 '''
 
@@ -18,6 +19,10 @@ from xml.dom.minidom import parse
 import xml.dom.minidom
 import time
 import re
+from collections import OrderedDict
+
+
+from lang_model import *
 
 #This function will handle the reading in and stripping of xml stuff
 def load_sms_mms_data():
@@ -49,6 +54,10 @@ class Person:
 
 	def __lt__(self, other):
 		return self.type_no < other.type_no
+
+	def __str__(self):
+		key = {"1": "Helena", "2": "Luis"}
+		return key[self.type_no] + "\tSMS:" + str(len(self.sms_list)) + "\tMMS:" + str(len(self.mms_list)) 
 	
 	def scan_for_emojis(self):
 		self.emojis = {}
@@ -61,11 +70,47 @@ class Person:
 						self.emojis[match] = 1
 					else:
 						self.emojis[match] += 1
+	
+	def history(self):
+		history = self.sms_list + self.mms_list
+		history.sort()
+		return history
 
-	# TODO Make the person iterable based on sms using itertools or something like that, i remember reading about it.
+	def time_statistics(self):
+		history = self.history()
 
-	def __str__(self):
-	    return self.type_nos
+		track = OrderedDict()
+
+		for i, ms in enumerate(history):
+			history[i] = ms.readable_date.split()
+			current_ms = history[i]
+			history[i][0] = int(current_ms[0])
+
+			month = current_ms[1]
+			if month not in track:
+				track[month] = [0, OrderedDict()]
+
+			day = current_ms[0]
+			if day not in track[month][1]:
+				track[month][1][day] = [0, OrderedDict()]
+
+			hour = current_ms[3].split(":")[0]
+			if hour not in track[month][1][day][1]:
+				track[month][1][day][1][hour] = 0
+			
+			track[month][0] += 1
+			track[month][1][day][0] += 1
+			track[month][1][day][1][hour] += 1
+		
+		# To print out data 
+		# Data storage is very confusing, might make a class to handle this tomorrow
+		for month in track:
+			print(month, track[month][0])
+			for day in track[month][1]:
+				print("\t", day, track[month][1][day][0])
+				for hour in track[month][1][day][1]:
+					print("\t\t", hour, track[month][1][day][1][hour])
+
 
 class Message:	
 	def __init__(self, type_no, text, date, readable_date):
@@ -75,8 +120,11 @@ class Message:
 		self.date = date
 		self.readable_date = readable_date
 
+	def __repr__(self):
+		return "SMS"
+
 	def __str__(self):
-		return str(self.text) + " " + str(self.readable_date)
+		return self.readable_date + "\n" + self.text
 
 	def __lt__(self, other):
 		return self.date < other.date
@@ -92,6 +140,9 @@ class Photo:
 
 	def __lt__(self, other):
 		return self.date < other.date
+
+	def __repr__(self):
+		return "MMS"
 
 # Returns a dictionary of people associated to their type value.
 # "1" is Helena and "2" is Luis
@@ -109,13 +160,17 @@ def associate_people():
 		people[person_id].add_sms(current_sms)
 
 	for mms in mms_data:
-		mms_id = mms.getAttribute("msg_box")
-		
 		mms_date = mms.getAttribute("date")
 		mms_readable_data = mms.getAttribute("readable_date")
 		mms_text = ""
 		mms_contains_image = False
 		mms_count = 0
+
+		addrs = mms.getElementsByTagName("addr")
+		if addrs[0].getAttribute("address") == "insert-address-token":
+			mms_id = "2"
+		else:
+			mms_id="1"
 
 		part = mms.getElementsByTagName("part")
 		for i in part:
@@ -125,7 +180,7 @@ def associate_people():
 			if i.getAttribute("ct") == "text/plain":
 				mms_text = i.getAttribute("text")
 		
-		current_mms = Photo(person_id, mms_text, mms_date, mms_readable_data)
+		current_mms = Photo(mms_id, mms_text, mms_date, mms_readable_data)
 		current_mms.contains_image = mms_contains_image
 		current_mms.photo_count = mms_count
 		
@@ -142,23 +197,21 @@ def chat_history(people):
 	
 	key = {"1": "Helena", "2": "Luis"}
 	
-	history = Helena.sms_list + Luis.sms_list + Helena.mms_list + Luis.mms_list
-	print(len(history))
+	history = Helena.history() + Luis.histoy()
 	history.sort()
 	
 	with open("chat_history.txt", "w") as f:
 		for i in history:
 			name = key[i.type_no]
-			f.write(name + "\t" + i.readable_date + "\t" + i.text + "\n")
+			f.write(name + "\t" + i.__repr__() + "\t" + i.readable_date + "\t" + i.text + "\n")
 	return
 	
 
 # TODO create statistics based on those messages
 # TODO create plots and graphs based on those statistics
+	# TODO count how many messages are sent in a day/week/month/x time unit and get the statistics on those
 
-# TODO create language model based on each person, based on CS 208 lab
 if __name__ == "__main__":
 	people = associate_people()
-	#chat_history(people)
-	Helena = people["1"]
-	print(Helena.emojis)
+	Helena, Luis = people["1"], people["2"]
+	Helena.time_statistics()

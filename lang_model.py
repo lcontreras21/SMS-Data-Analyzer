@@ -3,22 +3,19 @@ Luis Contreras-Orendain
 
 Make statistics on the data from SMS messages
 Language model will go here
-
 '''
+
 import random
 from copy import deepcopy
-
-from analyze import process
+from collections import Counter
 
 # TODO look into further data processing of sms data 
     # like removing punctuation and capitalization
-    # , including sentence boundaries
-    
+    # including sentence boundaries
 # TODO make bigram and unigram creation faster // dont know if its slow yet, untested 4 July 2019
 
 # data is texts separated by TB (text boundary)
-
-
+# TODO find a way to make this n grams
 def make_bigrams(data):
     # go through the data and make a dict of bigrams
     # data is a list
@@ -34,14 +31,8 @@ def make_bigrams(data):
 
 # TODO research list comprehension with if/else statements
 def make_unigrams(data):
-    unigrams = {}
-    # probably a faster way to do this
-    for word in data:
-        if word not in unigrams.keys():
-            unigrams[word] = 1
-        else:
-            unigrams[word] += 1
-    return unigrams
+	unigrams = dict(Counter(data))
+	return unigrams
 
 # normalizes based on parameter
 def bigram_model(bigrams, unigrams, norm=False):
@@ -54,15 +45,12 @@ def bigram_model(bigrams, unigrams, norm=False):
 def find_similar_bigrams(model, word):
     # return dict containing bigrams and probability that start with same word
 	possible_bigrams = {bigram:model[bigram] for bigram in model.keys() if bigram[0] == word}
-    return possible_bigrams
+	return possible_bigrams
 
 # TODO make it based on person and get text data fromt here
-### Answer: make it a function under person class and take data from there
-
-# TODO research how to disable wheel scrolling in vim
 def generate_sentence(model, prob=False):
 	sentence_length = random.int(1, 10) # longest text
-	if prob=True:
+	if prob == True:
         # Make it based on highest probability
 		copy_model = deepcopy(model)
 		starting_bigram = max(copy_model)[0]
@@ -76,15 +64,12 @@ def generate_sentence(model, prob=False):
 			sentence += " " + next_bigram[1]
 		return sentence
 	else:
-        # This will be random
-        # will make the function long
-		# but who cares
-
+        # This will be random, will make the function long
 		starting_word = random.choice(list(model.keys()))[0]
 		sentence = starting_word
 		for i in range(sentence_length):
 			possible_bigrams = find_similar_bigrams(model, starting_word)
-			next_word = random.choice(possible_bigrams))[1]
+			next_word = random.choice(possible_bigrams)[1]
 			sentence += " " + next_word[1]
 			starting_word = next_word
 		return sentence

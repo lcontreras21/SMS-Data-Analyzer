@@ -1,0 +1,11 @@
+<mms>
+	<parts>
+		<part/> # information on image and stuff
+		<part/> # image
+		<part/> # if it contains text
+	</parts>
+	<addrs>
+		<addr/> # insert-address-token if me, otherwise Helena's number
+		<addr/> # my number
+	</addrs>
+</mms>
